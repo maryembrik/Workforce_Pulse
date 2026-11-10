@@ -1,0 +1,36 @@
+column,category,dtype,missing,n_unique,example_values,business_meaning,decision,reason
+Age,Workforce profile,int64,0,43,"41, 49, 37, 33",Employee age in years,Audit only,"Protected attribute: excluded from model, used for EDA and fairness audit"
+Attrition,Target,str,0,2,"Yes, No",Whether the employee left (Yes/No),Target,"Prediction outcome, kept separate from features"
+BusinessTravel,Work conditions,str,0,3,"Travel_Rarely, Travel_Frequently, Non-Travel",Travel frequency (Non-Travel / Rarely / Frequently),Retain,Working-condition indicator
+DailyRate,Compensation,int64,0,886,"1102, 279, 1373, 1392",Daily rate (undocumented definition),Review,Meaning undocumented; check relation to MonthlyIncome before using
+Department,Organizational,str,0,3,"Sales, Research & Development, Human Resources",Department (HR / R&D / Sales),Retain,Organizational structure
+DistanceFromHome,Work conditions,int64,0,29,"1, 8, 2, 3",Distance from home to work (units undocumented),Retain,Commute burden proxy
+Education,Workforce profile,int64,0,5,"2, 1, 4, 3","Education level, 1=Below College .. 5=Doctor",Retain,Ordinal background attribute
+EducationField,Workforce profile,str,0,6,"Life Sciences, Other, Medical, Marketing",Field of study,Retain,Background attribute
+EmployeeCount,Technical,int64,0,1,1,Record count per row,Exclude,Expected constant: carries no information
+EmployeeNumber,Technical,int64,0,1470,"1, 2, 4, 5",Employee identifier,Key only,"Identifier: join/export key, never a feature"
+EnvironmentSatisfaction,Satisfaction,int64,0,4,"2, 3, 4, 1","Satisfaction with work environment, 1=Low .. 4=Very High",Retain,Employee experience
+Gender,Workforce profile,str,0,2,"Female, Male",Gender (Male/Female),Audit only,"Protected attribute: excluded from model, used for fairness audit"
+HourlyRate,Compensation,int64,0,71,"94, 61, 92, 56",Hourly rate (undocumented definition),Review,Meaning undocumented; check relation to MonthlyIncome before using
+JobInvolvement,Satisfaction,int64,0,4,"3, 2, 4, 1","Job involvement, 1=Low .. 4=Very High",Retain,Engagement indicator
+JobLevel,Organizational,int64,0,5,"2, 1, 3, 4",Job level 1..5,Retain,Seniority; check overlap with MonthlyIncome
+JobRole,Organizational,str,0,9,"Sales Executive, Research Scientist, Laboratory Technician, Manufacturing Director",Job role,Retain,Organizational structure
+JobSatisfaction,Satisfaction,int64,0,4,"4, 2, 3, 1","Job satisfaction, 1=Low .. 4=Very High",Retain,Employee experience
+MaritalStatus,Workforce profile,str,0,3,"Single, Married, Divorced",Marital status (Single/Married/Divorced),Audit only,"Protected attribute: excluded from model, used for fairness audit"
+MonthlyIncome,Compensation,int64,0,1349,"5993, 5130, 2090, 2909",Monthly income,Retain,Primary compensation measure
+MonthlyRate,Compensation,int64,0,1427,"19479, 24907, 2396, 23159",Monthly rate (undocumented definition),Review,Meaning undocumented; check relation to MonthlyIncome before using
+NumCompaniesWorked,Career development,int64,0,10,"8, 1, 6, 9",Number of previous employers,Retain,Career mobility history
+Over18,Technical,str,0,1,Y,Whether employee is over 18,Exclude,Expected constant: carries no information
+OverTime,Work conditions,str,0,2,"Yes, No",Works overtime (Yes/No),Retain,Workload indicator (business question Q4)
+PercentSalaryHike,Performance,int64,0,15,"11, 23, 15, 12",Last salary increase in %,Retain,Compensation progression
+PerformanceRating,Performance,int64,0,2,"3, 4","Performance rating, 1=Low .. 4=Outstanding",Review,Check variance: may only use part of the scale
+RelationshipSatisfaction,Satisfaction,int64,0,4,"1, 4, 2, 3","Satisfaction with work relationships, 1=Low .. 4=Very High",Retain,Employee experience
+StandardHours,Technical,int64,0,1,80,Standard working hours,Exclude,Expected constant: carries no information
+StockOptionLevel,Compensation,int64,0,4,"0, 1, 3, 2",Stock option level 0..3,Retain,Non-salary compensation
+TotalWorkingYears,Career development,int64,0,40,"8, 10, 7, 6",Total years of work experience,Retain,Experience; correlated with Age (proxy risk)
+TrainingTimesLastYear,Career development,int64,0,7,"0, 3, 2, 5",Trainings attended last year,Retain,Development investment
+WorkLifeBalance,Work conditions,int64,0,4,"1, 3, 2, 4","Work-life balance, 1=Bad .. 4=Best",Retain,Working conditions (Q5)
+YearsAtCompany,Career development,int64,0,37,"6, 10, 0, 8",Tenure at company in years,Retain,Tenure
+YearsInCurrentRole,Career development,int64,0,19,"4, 7, 0, 2",Years in current role,Retain,Career progression
+YearsSinceLastPromotion,Career development,int64,0,16,"0, 1, 3, 2",Years since last promotion,Retain,Career progression
+YearsWithCurrManager,Career development,int64,0,18,"5, 7, 0, 2",Years with current manager,Retain,Manager stability

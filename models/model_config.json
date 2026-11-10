@@ -1,0 +1,133 @@
+{
+  "model_version": "1.0.0",
+  "selected_model": "LogisticRegression",
+  "calibration": "sigmoid",
+  "hyperparameters": {
+    "C": 0.3,
+    "class_weight": null
+  },
+  "threshold": 0.14,
+  "threshold_rule": "max F2 on out-of-fold training predictions",
+  "input_features": [
+    "DistanceFromHome",
+    "Education",
+    "EnvironmentSatisfaction",
+    "JobInvolvement",
+    "JobLevel",
+    "JobSatisfaction",
+    "MonthlyIncome",
+    "NumCompaniesWorked",
+    "PercentSalaryHike",
+    "PerformanceRating",
+    "RelationshipSatisfaction",
+    "StockOptionLevel",
+    "TotalWorkingYears",
+    "TrainingTimesLastYear",
+    "WorkLifeBalance",
+    "YearsAtCompany",
+    "YearsInCurrentRole",
+    "YearsSinceLastPromotion",
+    "YearsWithCurrManager",
+    "RoleShareOfTenure",
+    "BusinessTravel",
+    "Department",
+    "EducationField",
+    "JobRole",
+    "OverTime"
+  ],
+  "engineered_in_pipeline": [
+    "SalaryRatioToLevel"
+  ],
+  "model_numeric_features": [
+    "DistanceFromHome",
+    "Education",
+    "EnvironmentSatisfaction",
+    "JobInvolvement",
+    "JobLevel",
+    "JobSatisfaction",
+    "NumCompaniesWorked",
+    "PercentSalaryHike",
+    "PerformanceRating",
+    "RelationshipSatisfaction",
+    "StockOptionLevel",
+    "TotalWorkingYears",
+    "TrainingTimesLastYear",
+    "WorkLifeBalance",
+    "YearsAtCompany",
+    "YearsInCurrentRole",
+    "YearsSinceLastPromotion",
+    "YearsWithCurrManager",
+    "RoleShareOfTenure",
+    "SalaryRatioToLevel"
+  ],
+  "lr_variant": {
+    "monthly_income_dropped": true,
+    "cv_pr_auc_with_income": 0.6788,
+    "cv_pr_auc_without_income": 0.6647,
+    "reason": "collinearity (income-JobLevel rho=0.92) produced sign-flipped, offsetting SHAP"
+  },
+  "excluded_protected": [
+    "Age",
+    "Gender",
+    "MaritalStatus"
+  ],
+  "test_metrics": {
+    "threshold": 0.14,
+    "accuracy": 0.7364,
+    "precision": 0.339,
+    "recall": 0.678,
+    "f1": 0.452,
+    "roc_auc": 0.8042,
+    "pr_auc": 0.5825,
+    "brier": 0.0998,
+    "flag_rate": 0.3207,
+    "tp": 40.0,
+    "fp": 78.0,
+    "tn": 231.0,
+    "fn": 19.0
+  },
+  "model_comparison": [
+    {
+      "model": "LogisticRegression",
+      "cv_pr_auc": 0.6647,
+      "cv_pr_auc_sd": 0.0721,
+      "cv_roc_auc": 0.8427,
+      "test_pr_auc": 0.5813,
+      "test_roc_auc": 0.8045,
+      "test_brier": 0.0998
+    },
+    {
+      "model": "XGBoost",
+      "cv_pr_auc": 0.6339,
+      "cv_pr_auc_sd": 0.0843,
+      "cv_roc_auc": 0.8362,
+      "test_pr_auc": 0.5494,
+      "test_roc_auc": 0.809,
+      "test_brier": 0.1017
+    },
+    {
+      "model": "Dummy (prevalence)",
+      "cv_pr_auc": NaN,
+      "cv_pr_auc_sd": NaN,
+      "cv_roc_auc": NaN,
+      "test_pr_auc": 0.1603,
+      "test_roc_auc": 0.5,
+      "test_brier": 0.1346
+    }
+  ],
+  "bootstrap_prauc_diff_xgb_minus_lr": {
+    "observed": -0.0319,
+    "ci95": [
+      -0.103,
+      0.0425
+    ]
+  },
+  "training_rows": 1470,
+  "random_state": 42,
+  "high_band_cutoff": 0.32,
+  "risk_bands": {
+    "High": "p >= 0.32",
+    "Elevated": "0.14 <= p < 0.32",
+    "Low": "p < 0.14"
+  }
+}

@@ -1,0 +1,179 @@
+// =====================================================================
+// Workforce Pulse — DAX measures
+// Create a table "_Measures" (Enter Data -> one empty column -> load), then add each measure below to it.
+// Table names assume the CSVs were loaded with their file names:
+//   fact_employees, scenario_sensitivity, feature_importance, dim_risk_band, model_metrics
+// Display folders are suggested in brackets.
+// =====================================================================
+
+
+// ---------------------------------------------------------------- [1 KPIs]
+Workforce Size = COUNTROWS ( fact_employees )
+
+Attrition Count = SUM ( fact_employees[AttritionFlag] )
+
+Attrition Rate = DIVIDE ( [Attrition Count], [Workforce Size] )                       // format: 0.0%
+
+Retention Rate = 1 - [Attrition Rate]                                                  // format: 0.0%
+
+Avg Tenure (Years) = AVERAGE ( fact_employees[YearsAtCompany] )                        // format: 0.0
+
+Avg Monthly Income = AVERAGE ( fact_employees[MonthlyIncome] )                         // format: #,0
+
+Median Monthly Income = MEDIAN ( fact_employees[MonthlyIncome] )                       // format: #,0
+
+Overtime Prevalence = DIVIDE ( SUM ( fact_employees[OvertimeFlag] ), [Workforce Size] )   // format: 0.0%
+
+Avg Satisfaction Index = AVERAGE ( fact_employees[SatisfactionIndex] )                 // format: 0.00
+
+// Share of all leavers that sit in the current filter context (e.g. a department bar)
+Share of All Leavers =
+DIVIDE (
+    [Attrition Count],
+    CALCULATE ( [Attrition Count], REMOVEFILTERS ( fact_employees ) )
+)                                                                                       // format: 0.0%
+
+// Attrition rate vs company average, in percentage points (for conditional formatting)
+Attrition Rate vs Overall (pp) =
+VAR Overall = CALCULATE ( [Attrition Rate], REMOVEFILTERS ( fact_employees ) )
+RETURN ( [Attrition Rate] - Overall ) * 100                                             // format: +0.0;-0.0;0.0
+
+// Label that always shows n next to a rate (use in tooltips / data labels)
+Rate Label =
+FORMAT ( [Attrition Rate], "0.0%" ) & "  (n=" & FORMAT ( [Workforce Size], "#,0" ) & ")"
+
+// Small-group warning for visuals
+Small Group Flag = IF ( [Workforce Size] < 30, "⚠ small group (n<30)", BLANK () )
+
+
+// ---------------------------------------------------------------- [2 Drivers]
+Attrition Rate Overtime =
+CALCULATE ( [Attrition Rate], fact_employees[OverTime] = "Yes" )                        // format: 0.0%
+
+Attrition Rate No Overtime =
+CALCULATE ( [Attrition Rate], fact_employees[OverTime] = "No" )                         // format: 0.0%
+
+Overtime Risk Ratio = DIVIDE ( [Attrition Rate Overtime], [Attrition Rate No Overtime] )   // format: 0.0"x"
+
+Attrition Rate Low Job Satisfaction =
+CALCULATE ( [Attrition Rate], fact_employees[JobSatisfaction] = 1 )
+
+Attrition Rate New Hires (0-2y) =
+CALCULATE ( [Attrition Rate], fact_employees[TenureBand] = "New (0-2y)" )
+
+// satisfaction_long is created in Power Query (unpivot, see guide step 2.4)
+Sat Employees = COUNTROWS ( satisfaction_long )
+
+Sat Attrition Rate =
+DIVIDE ( SUM ( satisfaction_long[AttritionFlag] ), COUNTROWS ( satisfaction_long ) )      // format: 0.0%
+
+// Global SHAP importance (feature_importance table, not filtered by employee slicers)
+Feature Importance = SUM ( feature_importance[MeanAbsSHAP] )
+
+
+// ---------------------------------------------------------------- [3 Model]
+// Predictions are out-of-fold: every employee was scored by a model that never saw them.
+Avg Predicted Risk = AVERAGE ( fact_employees[PredictedProbability] )                    // format: 0.0%
+
+Model Expected Leavers = SUM ( fact_employees[PredictedProbability] )                    // format: #,0
+
+Flagged Employees = CALCULATE ( [Workforce Size], fact_employees[PredictedClass] = 1 )
+
+High Risk Employees = CALCULATE ( [Workforce Size], fact_employees[RiskBand] = "High" )
+
+Flag Rate = DIVIDE ( [Flagged Employees], [Workforce Size] )                             // format: 0.0%
+
+// Retrospective check (these employees' outcomes are already known)
+Recall of Flags =
+DIVIDE (
+    CALCULATE ( [Attrition Count], fact_employees[PredictedClass] = 1 ),
+    [Attrition Count]
+)                                                                                        // format: 0.0%
+
+Precision of Flags =
+DIVIDE (
+    CALCULATE ( [Attrition Count], fact_employees[PredictedClass] = 1 ),
+    [Flagged Employees]
+)                                                                                        // format: 0.0%
+
+
+// ---------------------------------------------------------------- [4 Simulator — what-if parameters]
+// Create these with Modeling > New parameter > Numeric range (this auto-creates the table + "Value" measure):
+//   Overtime Reduction %        min 0  max 100  increment 5   default 0
+//   Satisfaction Improvement %  min 0  max 100  increment 5   default 0
+//   Pay Alignment %             min 0  max 100  increment 5   default 0
+// Power BI names the generated measures e.g. [Overtime Reduction % Value] (0..100). Divide by 100 below.
+
+
+// ----- Layer A: DESCRIPTIVE scenario (historical rates + explicit assumption) -----------
+// Assumption: employees moved out of a risk group take on the CURRENT historical attrition rate of the
+// comparison group within the same filter context. This is an illustration, not a measured effect.
+
+Scenario A Leavers - Overtime =
+VAR r        = [Overtime Reduction % Value] / 100
+VAR N_OT     = CALCULATE ( [Workforce Size], fact_employees[OverTime] = "Yes" )
+VAR L_OT     = CALCULATE ( [Attrition Count], fact_employees[OverTime] = "Yes" )
+VAR RateNoOT = [Attrition Rate No Overtime]
+RETURN [Attrition Count] - r * L_OT + r * N_OT * RateNoOT                                // format: #,0
+
+Scenario A Leavers - Satisfaction =
+// Moves a share of employees with LowSatisfactionCount >= 1 to the rate of employees with none at "low".
+VAR r       = [Satisfaction Improvement % Value] / 100
+VAR N_low   = CALCULATE ( [Workforce Size], fact_employees[LowSatisfactionCount] >= 1 )
+VAR L_low   = CALCULATE ( [Attrition Count], fact_employees[LowSatisfactionCount] >= 1 )
+VAR RateOK  = CALCULATE ( [Attrition Rate], fact_employees[LowSatisfactionCount] = 0 )
+RETURN [Attrition Count] - r * L_low + r * N_low * RateOK
+
+Scenario A Leavers - Pay =
+// Moves a share of employees paid < 90% of their job-level median to the rate of the "in line" group.
+VAR r        = [Pay Alignment % Value] / 100
+VAR N_below  = CALCULATE ( [Workforce Size], fact_employees[SalaryPosition] = "Below peers (<90%)" )
+VAR L_below  = CALCULATE ( [Attrition Count], fact_employees[SalaryPosition] = "Below peers (<90%)" )
+VAR RateIn   = CALCULATE ( [Attrition Rate], fact_employees[SalaryPosition] = "In line (90-110%)" )
+RETURN [Attrition Count] - r * L_below + r * N_below * RateIn
+
+Scenario A Leavers - Combined =
+// Sum of the three separate changes. Assumes no overlap between groups, which overstates the combined change.
+[Attrition Count]
+    + ( [Scenario A Leavers - Overtime] - [Attrition Count] )
+    + ( [Scenario A Leavers - Satisfaction] - [Attrition Count] )
+    + ( [Scenario A Leavers - Pay] - [Attrition Count] )
+
+Scenario A Attrition Rate = DIVIDE ( [Scenario A Leavers - Combined], [Workforce Size] )   // format: 0.0%
+
+Scenario A Change (pp) = ( [Scenario A Attrition Rate] - [Attrition Rate] ) * 100          // format: +0.0;-0.0;0.0
+
+
+// ----- Layer B: MODEL SENSITIVITY (how the model's output responds) ----------------------
+// scenario_sensitivity holds, per affected employee, the final model's score now and with one input changed.
+// The parameter applies the change to r% of the affected employees (expected value).
+// Result = change in the MODEL'S expected-leaver count. NOT employees retained.
+
+Model Sensitivity - Overtime =
+[Overtime Reduction % Value] / 100
+    * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "overtime_removed" )
+
+Model Sensitivity - Satisfaction =
+// Uses the three satisfaction scenarios, averaged so one employee is not counted three times.
+[Satisfaction Improvement % Value] / 100
+    * DIVIDE (
+        CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ),
+            scenario_sensitivity[Scenario] IN { "job_satisfaction_up", "env_satisfaction_up", "wlb_up" } ),
+        3
+    )
+
+Model Sensitivity - Pay =
+[Pay Alignment % Value] / 100
+    * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "salary_to_peer_median" )
+
+Model Sensitivity - Combined =
+[Model Sensitivity - Overtime] + [Model Sensitivity - Satisfaction] + [Model Sensitivity - Pay]   // format: +#,0.0;-#,0.0
+
+Employees Affected - Overtime =
+CALCULATE ( DISTINCTCOUNT ( scenario_sensitivity[EmployeeNumber] ), scenario_sensitivity[Scenario] = "overtime_removed" )
+    * [Overtime Reduction % Value] / 100                                                  // format: #,0
+
+// Disclaimer text for a card
+Simulator Disclaimer =
+"Illustrative only. Layer A applies historical group rates under an explicit assumption. "
+    & "Layer B shows how the model's score responds. Neither is a causal estimate or a count of employees retained."

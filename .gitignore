@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data — raw dataset is downloaded from Kaggle, not redistributed
+data/raw/*.csv
+data/processed/*.csv
+data/predictions/*.csv
+!data/**/.gitkeep
+# employee-level exports: regenerate with `python -m src.export_powerbi`
+powerbi/data/*.csv
+
+# Local database
+*.db
+*.sqlite
+
+# MLflow / model artifacts
+mlflow.db
+mlruns/
+mlartifacts/
+models/*.joblib
+models/*.pkl
+
+# Power BI temp
+*.pbix.bak
+~$*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.env
+
+# Local tool settings
+.claude/settings.local.json
