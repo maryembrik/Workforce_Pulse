@@ -19,8 +19,8 @@
   "visualStyles": {
     "*": {
       "*": {
-        "background": [{ "show": true, "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }],
-        "border": [{ "show": true, "color": { "solid": { "color": "#E5E7EB" } }, "radius": 8 }],
+        "background": [{ "show": false }],
+        "border": [{ "show": false }],
         "dropShadow": [{ "show": false }]
       }
     },

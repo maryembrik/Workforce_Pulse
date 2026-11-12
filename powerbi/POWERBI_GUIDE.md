@@ -109,6 +109,22 @@ If a number differs, check data types (Step 2.1) before touching the DAX.
 
 ---
 
+## Step 4b — Page backgrounds (layout ready-made)
+`powerbi/backgrounds/` holds one 1280 × 720 background per page (`*_bg.png`) with the title, panels, panel titles,
+notes and footer already drawn, plus a `*_layout.png` twin that names the visual for every dashed slot (open it
+next to Power BI as a map; do not use it as the background). Regenerate with `python tools/make_backgrounds.py`.
+
+For each page:
+1. Click an empty area of the canvas → **Format de la page** (paint-roller icon) → **Paramètres du canevas**:
+   type *16:9* (1280 × 720).
+2. **Arrière-plan du canevas** → **Parcourir** → choose `01_overview_bg.png` (or 02 / 03) → **Ajuster l'image: Ajuster**,
+   **Transparence: 0 %**. Also set *Fond d'écran* transparency to 100 % if a grey border shows.
+3. Add each visual and drag it onto its slot. The theme turns visual backgrounds and borders off, so visuals sit
+   on the white panels. Turn the visual's own **Titre** off when the panel already shows the title.
+
+Re-import the theme (*Affichage → Thèmes → Rechercher des thèmes*) if you loaded it before this change. Because
+the disclaimer is drawn on the simulator background, the Simulator Disclaimer card is optional.
+
 ## Step 5 — Page 1: Workforce Overview
 *Question answered: How big is the workforce, how many leave, and where?*
 
