@@ -1,0 +1,71 @@
+// =====================================================================
+// Workforce Pulse — PART 1: core measures (KPIs, drivers, model)
+// HOW TO USE (Power BI Desktop, DAX query view / "Vue de requête DAX"):
+//   1. Paste this WHOLE file into a new query tab.
+//   2. Click "Exécuter" (Run): the result table must show 1470 / 237 / 0.161 / 567 / 241.7.
+//   3. Click "Mettre à jour le modèle avec les modifications" (Update model with changes).
+//      All measures below are created in the table fact_employees.
+//   4. Set number formats afterwards (Measure tools / Outils de mesure): rates as %, counts as whole numbers.
+// Requires the tables: fact_employees, feature_importance (loaded from powerbi/data/).
+// =====================================================================
+DEFINE
+    // ---------------------------------------------------------------- 1 KPIs
+    MEASURE fact_employees[Workforce Size] = COUNTROWS ( fact_employees )
+    MEASURE fact_employees[Attrition Count] = SUM ( fact_employees[AttritionFlag] )
+    MEASURE fact_employees[Attrition Rate] = DIVIDE ( [Attrition Count], [Workforce Size] )
+    MEASURE fact_employees[Retention Rate] = 1 - [Attrition Rate]
+    MEASURE fact_employees[Avg Tenure (Years)] = AVERAGE ( fact_employees[YearsAtCompany] )
+    MEASURE fact_employees[Avg Monthly Income] = AVERAGE ( fact_employees[MonthlyIncome] )
+    MEASURE fact_employees[Median Monthly Income] = MEDIAN ( fact_employees[MonthlyIncome] )
+    MEASURE fact_employees[Overtime Prevalence] =
+        DIVIDE ( SUM ( fact_employees[OvertimeFlag] ), [Workforce Size] )
+    MEASURE fact_employees[Avg Satisfaction Index] = AVERAGE ( fact_employees[SatisfactionIndex] )
+    MEASURE fact_employees[Share of All Leavers] =
+        DIVIDE ( [Attrition Count], CALCULATE ( [Attrition Count], REMOVEFILTERS ( fact_employees ) ) )
+    MEASURE fact_employees[Attrition Rate vs Overall (pp)] =
+        VAR Overall = CALCULATE ( [Attrition Rate], REMOVEFILTERS ( fact_employees ) )
+        RETURN ( [Attrition Rate] - Overall ) * 100
+    MEASURE fact_employees[Rate Label] =
+        FORMAT ( [Attrition Rate], "0.0%" ) & "  (n=" & FORMAT ( [Workforce Size], "#,0" ) & ")"
+    MEASURE fact_employees[Small Group Flag] =
+        IF ( [Workforce Size] < 30, "small group (n<30)", BLANK () )
+
+    // ---------------------------------------------------------------- 2 Drivers
+    MEASURE fact_employees[Attrition Rate Overtime] =
+        CALCULATE ( [Attrition Rate], fact_employees[OverTime] = "Yes" )
+    MEASURE fact_employees[Attrition Rate No Overtime] =
+        CALCULATE ( [Attrition Rate], fact_employees[OverTime] = "No" )
+    MEASURE fact_employees[Overtime Risk Ratio] =
+        DIVIDE ( [Attrition Rate Overtime], [Attrition Rate No Overtime] )
+    MEASURE fact_employees[Attrition Rate Low Job Satisfaction] =
+        CALCULATE ( [Attrition Rate], fact_employees[JobSatisfaction] = 1 )
+    MEASURE fact_employees[Attrition Rate New Hires (0-2y)] =
+        CALCULATE ( [Attrition Rate], fact_employees[TenureBand] = "New (0-2y)" )
+    MEASURE fact_employees[Feature Importance] = SUM ( feature_importance[MeanAbsSHAP] )
+
+    // ---------------------------------------------------------------- 3 Model (out-of-fold scores)
+    MEASURE fact_employees[Avg Predicted Risk] = AVERAGE ( fact_employees[PredictedProbability] )
+    MEASURE fact_employees[Model Expected Leavers] = SUM ( fact_employees[PredictedProbability] )
+    MEASURE fact_employees[Flagged Employees] =
+        CALCULATE ( [Workforce Size], fact_employees[PredictedClass] = 1 )
+    MEASURE fact_employees[High Risk Employees] =
+        CALCULATE ( [Workforce Size], fact_employees[RiskBand] = "High" )
+    MEASURE fact_employees[Flag Rate] = DIVIDE ( [Flagged Employees], [Workforce Size] )
+    MEASURE fact_employees[Recall of Flags] =
+        DIVIDE ( CALCULATE ( [Attrition Count], fact_employees[PredictedClass] = 1 ), [Attrition Count] )
+    MEASURE fact_employees[Precision of Flags] =
+        DIVIDE ( CALCULATE ( [Attrition Count], fact_employees[PredictedClass] = 1 ), [Flagged Employees] )
+
+// Validation row (expected: 1470 | 237 | 0.1612 | 0.3053 | 0.1044 | 567 | 0.789 | 0.330 | 241.7)
+EVALUATE
+ROW (
+    "Workforce Size", [Workforce Size],
+    "Attrition Count", [Attrition Count],
+    "Attrition Rate", [Attrition Rate],
+    "Rate Overtime", [Attrition Rate Overtime],
+    "Rate No Overtime", [Attrition Rate No Overtime],
+    "Flagged Employees", [Flagged Employees],
+    "Recall of Flags", [Recall of Flags],
+    "Precision of Flags", [Precision of Flags],
+    "Model Expected Leavers", [Model Expected Leavers]
+)

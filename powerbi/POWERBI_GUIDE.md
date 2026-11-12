@@ -12,17 +12,27 @@ Everything you need is in `powerbi/`:
 | `data/feature_importance.csv` | Global SHAP importance (42 features) with business labels |
 | `data/dim_risk_band.csv` | Risk band definitions, sort order, colors |
 | `data/model_metrics.csv` | Model card numbers |
-| `measures.dax` | All DAX measures, copy-paste ready |
-| `workforce_pulse_theme.json` | Color / font theme |
+| `dax_query_1_core_measures.dax` | **Recommended:** all KPI / driver / model measures in one paste (DAX query view) |
+| `dax_query_2_simulator_measures.dax` | Satisfaction + simulator measures in one paste (after Step 7.1) |
+| `measures.dax` | Same measures as single blocks, for *New measure* one at a time (reference) |
+| `workforce_pulse_theme.json` | Color / font theme. **Not** a data file: never load it with Get data |
 
 > Regenerate the data at any time with `python -m src.export_powerbi`.
+
+**French UI notes (Power BI en français)**
+- *Fichier → Options et paramètres → Options → Global → Paramètres régionaux* → tick **"Utiliser les séparateurs DAX standard"**
+  (or keep the default and accept that `,` becomes `;` in DAX). The `.dax` files use standard separators (`,`).
+- Menu names: Modeling = *Modélisation*, New parameter = *Nouveau paramètre*, DAX query view = *Vue de requête DAX*,
+  Run = *Exécuter*, View → Themes = *Affichage → Thèmes*.
 
 ---
 
 ## Step 1 — Load data
+0. Start a **new, blank report** (*Fichier → Nouveau*). Do not build inside another project's .pbix.
 1. Open Power BI Desktop → **Get data → Text/CSV**. Load the five CSVs from `powerbi/data/`.
    Use **Transform Data** (not Load) for `fact_employees` so you can check types first.
-2. **View → Themes → Browse for themes** → select `workforce_pulse_theme.json`.
+2. **View → Themes → Browse for themes** (*Affichage → Thèmes → Rechercher des thèmes*) → select `workforce_pulse_theme.json`.
+   If a table called `workforce_pulse_theme` appeared in the Data pane, delete it: the theme is applied, not loaded.
 
 ## Step 2 — Power Query (Transform Data)
 **2.1 Data types** (`fact_employees`):
@@ -66,12 +76,19 @@ TenureBand → TenureBandSort · IncomeBand → IncomeBandSort · AgeBand → Ag
 **Hide** technical columns from report view: all `*Sort` columns, `Split`, `OvertimeFlag`, `AttritionFlag`.
 
 ## Step 4 — Measures
-1. **Home → Enter data** → a table named `_Measures` with one dummy column → Load.
-2. Paste each measure from `measures.dax` (one *New measure* per block). Apply the format in the comment.
-3. Create **display folders** (Model view → measure → Properties → Display folder): `1 KPIs`, `2 Drivers`, `3 Model`, `4 Simulator`.
-4. Delete the dummy column. `_Measures` now shows with a calculator icon at the top of the field list.
+**Fast way (DAX query view, one paste):**
+1. Left bar → **DAX query view** (*Vue de requête DAX*) → new query tab.
+2. Open `dax_query_1_core_measures.dax`, copy the **whole file**, paste it, click **Run** (*Exécuter*).
+   A one-row result appears: 1470 | 237 | 0.161 | 0.305 | 0.104 | 567 | 0.789 | 0.330 | 241.7.
+3. Click **Update model with changes** (*Mettre à jour le modèle avec les modifications*), above the query.
+   The measures are now in `fact_employees`.
+4. Set formats (select measure → *Measure tools / Outils de mesure*): rates as %, counts as whole numbers.
+5. Optional: Model view → select measures → Properties → Display folder `1 KPIs`, `2 Drivers`, `3 Model`.
 
-**Validation**: drop each measure on a card with no filters and compare.
+> Do **not** paste `measures.dax` into the DAX query view: it is a list of separate measures, not a query, so every
+> line turns red. Use it only with *New measure*, one block at a time.
+
+**Validation**: the query result above, or drop each measure on a card with no filters and compare.
 
 | Measure | Expected |
 |---|---|
@@ -140,11 +157,16 @@ Add a text box under the SHAP chart:
 
 | Name | Min | Max | Increment | Default |
 |---|---|---|---|---|
-| Overtime Reduction % | 0 | 100 | 5 | 0 |
-| Satisfaction Improvement % | 0 | 100 | 5 | 0 |
-| Pay Alignment % | 0 | 100 | 5 | 0 |
+| Overtime Reduction | 0 | 100 | 5 | 0 |
+| Satisfaction Improvement | 0 | 100 | 5 | 0 |
+| Pay Alignment | 0 | 100 | 5 | 0 |
 
-Power BI creates tables with measures `[Overtime Reduction % Value]` etc. The DAX in `measures.dax` uses these exact names.
+Use these names **exactly** (no `%`). Each creates a table with a column of the same name. The DAX reads that column
+with `SELECTEDVALUE`, so it does not depend on the auto-measure name ("… Value" in English, "… Valeur" in French).
+
+**7.1b Simulator measures:** make sure `satisfaction_long` exists (Step 2.4), then in DAX query view paste the whole
+`dax_query_2_simulator_measures.dax` → **Run**. The row (sliders forced to 100 %) must read
+153.4 | 162.4 | 211.3 | −72.7 | −18.6 | −4.7 | 7350. Then **Update model with changes**.
 
 **7.2 Layout: two clearly separated layers.** Use two rectangles with headers.
 

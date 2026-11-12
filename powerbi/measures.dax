@@ -98,11 +98,12 @@ DIVIDE (
 
 
 // ---------------------------------------------------------------- [4 Simulator — what-if parameters]
-// Create these with Modeling > New parameter > Numeric range (this auto-creates the table + "Value" measure):
-//   Overtime Reduction %        min 0  max 100  increment 5   default 0
-//   Satisfaction Improvement %  min 0  max 100  increment 5   default 0
-//   Pay Alignment %             min 0  max 100  increment 5   default 0
-// Power BI names the generated measures e.g. [Overtime Reduction % Value] (0..100). Divide by 100 below.
+// Create these with Modeling > New parameter > Numeric range (Modelisation > Nouveau parametre > Plage numerique):
+//   Overtime Reduction          min 0  max 100  increment 5   default 0
+//   Satisfaction Improvement    min 0  max 100  increment 5   default 0
+//   Pay Alignment               min 0  max 100  increment 5   default 0
+// The measures read the parameter COLUMN with SELECTEDVALUE, so they work whatever the UI language names the auto-measure
+// ("... Value" in English, "... Valeur" in French). Values are 0..100; divide by 100 below.
 
 
 // ----- Layer A: DESCRIPTIVE scenario (historical rates + explicit assumption) -----------
@@ -110,7 +111,7 @@ DIVIDE (
 // comparison group within the same filter context. This is an illustration, not a measured effect.
 
 Scenario A Leavers - Overtime =
-VAR r        = [Overtime Reduction % Value] / 100
+VAR r        = SELECTEDVALUE ( 'Overtime Reduction'[Overtime Reduction], 0 ) / 100
 VAR N_OT     = CALCULATE ( [Workforce Size], fact_employees[OverTime] = "Yes" )
 VAR L_OT     = CALCULATE ( [Attrition Count], fact_employees[OverTime] = "Yes" )
 VAR RateNoOT = [Attrition Rate No Overtime]
@@ -118,7 +119,7 @@ RETURN [Attrition Count] - r * L_OT + r * N_OT * RateNoOT                       
 
 Scenario A Leavers - Satisfaction =
 // Moves a share of employees with LowSatisfactionCount >= 1 to the rate of employees with none at "low".
-VAR r       = [Satisfaction Improvement % Value] / 100
+VAR r       = SELECTEDVALUE ( 'Satisfaction Improvement'[Satisfaction Improvement], 0 ) / 100
 VAR N_low   = CALCULATE ( [Workforce Size], fact_employees[LowSatisfactionCount] >= 1 )
 VAR L_low   = CALCULATE ( [Attrition Count], fact_employees[LowSatisfactionCount] >= 1 )
 VAR RateOK  = CALCULATE ( [Attrition Rate], fact_employees[LowSatisfactionCount] = 0 )
@@ -126,7 +127,7 @@ RETURN [Attrition Count] - r * L_low + r * N_low * RateOK
 
 Scenario A Leavers - Pay =
 // Moves a share of employees paid < 90% of their job-level median to the rate of the "in line" group.
-VAR r        = [Pay Alignment % Value] / 100
+VAR r        = SELECTEDVALUE ( 'Pay Alignment'[Pay Alignment], 0 ) / 100
 VAR N_below  = CALCULATE ( [Workforce Size], fact_employees[SalaryPosition] = "Below peers (<90%)" )
 VAR L_below  = CALCULATE ( [Attrition Count], fact_employees[SalaryPosition] = "Below peers (<90%)" )
 VAR RateIn   = CALCULATE ( [Attrition Rate], fact_employees[SalaryPosition] = "In line (90-110%)" )
@@ -150,12 +151,12 @@ Scenario A Change (pp) = ( [Scenario A Attrition Rate] - [Attrition Rate] ) * 10
 // Result = change in the MODEL'S expected-leaver count. NOT employees retained.
 
 Model Sensitivity - Overtime =
-[Overtime Reduction % Value] / 100
+SELECTEDVALUE ( 'Overtime Reduction'[Overtime Reduction], 0 ) / 100
     * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "overtime_removed" )
 
 Model Sensitivity - Satisfaction =
 // Uses the three satisfaction scenarios, averaged so one employee is not counted three times.
-[Satisfaction Improvement % Value] / 100
+SELECTEDVALUE ( 'Satisfaction Improvement'[Satisfaction Improvement], 0 ) / 100
     * DIVIDE (
         CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ),
             scenario_sensitivity[Scenario] IN { "job_satisfaction_up", "env_satisfaction_up", "wlb_up" } ),
@@ -163,7 +164,7 @@ Model Sensitivity - Satisfaction =
     )
 
 Model Sensitivity - Pay =
-[Pay Alignment % Value] / 100
+SELECTEDVALUE ( 'Pay Alignment'[Pay Alignment], 0 ) / 100
     * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "salary_to_peer_median" )
 
 Model Sensitivity - Combined =
@@ -171,7 +172,7 @@ Model Sensitivity - Combined =
 
 Employees Affected - Overtime =
 CALCULATE ( DISTINCTCOUNT ( scenario_sensitivity[EmployeeNumber] ), scenario_sensitivity[Scenario] = "overtime_removed" )
-    * [Overtime Reduction % Value] / 100                                                  // format: #,0
+    * SELECTEDVALUE ( 'Overtime Reduction'[Overtime Reduction], 0 ) / 100                                                  // format: #,0
 
 // Disclaimer text for a card
 Simulator Disclaimer =

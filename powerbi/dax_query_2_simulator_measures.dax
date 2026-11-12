@@ -1,0 +1,96 @@
+// =====================================================================
+// Workforce Pulse — PART 2: satisfaction + simulator measures
+// RUN ONLY AFTER PART 1 AND AFTER CREATING:
+//   a) the Power Query table  satisfaction_long   (guide step 2.4)
+//   b) three what-if parameters (Modélisation > Nouveau paramètre > Plage numérique), named EXACTLY:
+//        Overtime Reduction        min 0  max 100  incrément 5  défaut 0
+//        Satisfaction Improvement  min 0  max 100  incrément 5  défaut 0
+//        Pay Alignment             min 0  max 100  incrément 5  défaut 0
+//      Each creates a table + column with that same name. These measures read the column directly,
+//      so they work in French and English Power BI (the auto-measure is "...Valeur" in French, "...Value" in English).
+// Then: paste whole file -> Exécuter (check the validation row) -> Mettre à jour le modèle avec les modifications.
+// =====================================================================
+DEFINE
+    // ---------------------------------------------------------------- Satisfaction (satisfaction_long)
+    MEASURE fact_employees[Sat Employees] = COUNTROWS ( satisfaction_long )
+    MEASURE fact_employees[Sat Attrition Rate] =
+        DIVIDE ( SUM ( satisfaction_long[AttritionFlag] ), COUNTROWS ( satisfaction_long ) )
+
+    // ---------------------------------------------------------------- Parameter shares (0..1)
+    MEASURE fact_employees[OT Reduction Share] =
+        SELECTEDVALUE ( 'Overtime Reduction'[Overtime Reduction], 0 ) / 100
+    MEASURE fact_employees[Satisfaction Share] =
+        SELECTEDVALUE ( 'Satisfaction Improvement'[Satisfaction Improvement], 0 ) / 100
+    MEASURE fact_employees[Pay Share] =
+        SELECTEDVALUE ( 'Pay Alignment'[Pay Alignment], 0 ) / 100
+
+    // ---------------------------------------------------------------- Layer A: descriptive scenario
+    // Assumption: employees moved out of a risk group take on the CURRENT attrition rate of the comparison group.
+    MEASURE fact_employees[Scenario A Leavers - Overtime] =
+        VAR r = [OT Reduction Share]
+        VAR N_OT = CALCULATE ( [Workforce Size], fact_employees[OverTime] = "Yes" )
+        VAR L_OT = CALCULATE ( [Attrition Count], fact_employees[OverTime] = "Yes" )
+        RETURN [Attrition Count] - r * L_OT + r * N_OT * [Attrition Rate No Overtime]
+    MEASURE fact_employees[Scenario A Leavers - Satisfaction] =
+        VAR r = [Satisfaction Share]
+        VAR N_low = CALCULATE ( [Workforce Size], fact_employees[LowSatisfactionCount] >= 1 )
+        VAR L_low = CALCULATE ( [Attrition Count], fact_employees[LowSatisfactionCount] >= 1 )
+        VAR RateOK = CALCULATE ( [Attrition Rate], fact_employees[LowSatisfactionCount] = 0 )
+        RETURN [Attrition Count] - r * L_low + r * N_low * RateOK
+    MEASURE fact_employees[Scenario A Leavers - Pay] =
+        VAR r = [Pay Share]
+        VAR N_below = CALCULATE ( [Workforce Size], fact_employees[SalaryPosition] = "Below peers (<90%)" )
+        VAR L_below = CALCULATE ( [Attrition Count], fact_employees[SalaryPosition] = "Below peers (<90%)" )
+        VAR RateIn = CALCULATE ( [Attrition Rate], fact_employees[SalaryPosition] = "In line (90-110%)" )
+        RETURN [Attrition Count] - r * L_below + r * N_below * RateIn
+    MEASURE fact_employees[Scenario A Leavers - Combined] =
+        // Sum of the three separate changes; ignores overlap between groups, so it overstates the combined effect.
+        [Attrition Count]
+            + ( [Scenario A Leavers - Overtime] - [Attrition Count] )
+            + ( [Scenario A Leavers - Satisfaction] - [Attrition Count] )
+            + ( [Scenario A Leavers - Pay] - [Attrition Count] )
+    MEASURE fact_employees[Scenario A Attrition Rate] =
+        DIVIDE ( [Scenario A Leavers - Combined], [Workforce Size] )
+    MEASURE fact_employees[Scenario A Change (pp)] =
+        ( [Scenario A Attrition Rate] - [Attrition Rate] ) * 100
+
+    // ---------------------------------------------------------------- Layer B: model sensitivity
+    // Change in the MODEL'S expected-leaver count. NOT employees retained.
+    MEASURE fact_employees[Model Sensitivity - Overtime] =
+        [OT Reduction Share]
+            * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "overtime_removed" )
+    MEASURE fact_employees[Model Sensitivity - Satisfaction] =
+        [Satisfaction Share]
+            * DIVIDE (
+                CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ),
+                    scenario_sensitivity[Scenario] IN { "job_satisfaction_up", "env_satisfaction_up", "wlb_up" } ),
+                3 )
+    MEASURE fact_employees[Model Sensitivity - Pay] =
+        [Pay Share]
+            * CALCULATE ( SUM ( scenario_sensitivity[ScoreChange] ), scenario_sensitivity[Scenario] = "salary_to_peer_median" )
+    MEASURE fact_employees[Model Sensitivity - Combined] =
+        [Model Sensitivity - Overtime] + [Model Sensitivity - Satisfaction] + [Model Sensitivity - Pay]
+    MEASURE fact_employees[Employees Affected - Overtime] =
+        CALCULATE ( DISTINCTCOUNT ( scenario_sensitivity[EmployeeNumber] ), scenario_sensitivity[Scenario] = "overtime_removed" )
+            * [OT Reduction Share]
+    MEASURE fact_employees[Simulator Disclaimer] =
+        "Illustrative only. Layer A applies historical group rates under an explicit assumption. "
+            & "Layer B shows how the model's score responds. Neither is a causal estimate or a count of employees retained."
+
+// Validation with all three sliders at 100 %
+// expected: 153.4 | 162.4 | 211.3 | -72.7 | -18.6 | -4.7 | 7350
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "A Overtime", [Scenario A Leavers - Overtime],
+        "A Satisfaction", [Scenario A Leavers - Satisfaction],
+        "A Pay", [Scenario A Leavers - Pay],
+        "B Overtime", [Model Sensitivity - Overtime],
+        "B Satisfaction", [Model Sensitivity - Satisfaction],
+        "B Pay", [Model Sensitivity - Pay],
+        "Sat rows", [Sat Employees]
+    ),
+    'Overtime Reduction'[Overtime Reduction] = 100,
+    'Satisfaction Improvement'[Satisfaction Improvement] = 100,
+    'Pay Alignment'[Pay Alignment] = 100
+)
